@@ -102,7 +102,9 @@ class TaskFlowDemoSeeder extends Seeder
             'status' => $status,
             'priority' => $definition['priority'],
             'due_date' => $dueInDays === null ? null : today()->addDays($dueInDays),
-            'completed_at' => $status === TaskStatus::Done ? now()->subDays(fake()->numberBetween(0, 3)) : null,
+            'completed_at' => $status === TaskStatus::Done
+                ? now()->subDays(fake()->numberBetween(0, 3))->max(now()->startOfWeek()->addHours(9))
+                : null,
         ]);
 
         $attach = array_values(array_filter(array_map(
