@@ -4,6 +4,7 @@ import {
     BookOpen,
     FolderGit2,
     FolderKanban,
+    KeyRound,
     LayoutGrid,
     ListChecks,
 } from '@lucide/vue';
@@ -21,6 +22,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import mcpTokenRoutes from '@/routes/mcp-tokens';
 import projectRoutes from '@/routes/projects';
 import taskRoutes from '@/routes/tasks';
 import type { NavItem } from '@/types';
@@ -40,6 +42,11 @@ const mainNavItems: NavItem[] = [
         title: 'Tasks',
         href: taskRoutes.index(),
         icon: ListChecks,
+    },
+    {
+        title: 'MCP tokens',
+        href: mcpTokenRoutes.index(),
+        icon: KeyRound,
     },
 ];
 

@@ -27,6 +27,8 @@ kit — and the same domain is exposed to AI agents over the
 | ------------------------------------------ | ------------------------------------ |
 | ![Projects](docs/screenshots/projects.png) | ![Tasks](docs/screenshots/tasks.png) |
 
+![MCP tokens](docs/screenshots/mcp-tokens.png)
+
 ## The MCP server
 
 `app/Mcp/Servers/TaskFlowServer.php` is registered twice in `routes/ai.php`:
@@ -112,6 +114,12 @@ claude mcp add taskflow -- php /absolute/path/to/laravel-mcp/artisan mcp:serve -
 
 ### Over HTTP with a Sanctum token
 
+Issue, inspect and revoke tokens from the **MCP tokens** page in the app: it
+shows the plain text token exactly once, together with a ready-to-paste client
+configuration, and lists each token's abilities and last use.
+
+The same thing from the command line:
+
 ```bash
 php artisan mcp:token demo@taskflow.test --name="Claude Code"
 # read-only clients:
@@ -172,6 +180,9 @@ app/Mcp/
 app/Support/
 ├── WorkspaceStats.php              # one source for the dashboard and the MCP overview
 └── TaskFlowPayload.php             # one shape for Inertia props and structured content
+
+app/Http/Controllers/Mcp/TokenController.php  # the MCP tokens module (issue, list, revoke)
+resources/js/pages/mcp-tokens/Index.vue
 ```
 
 Deliberate omissions, with reasons:
@@ -200,8 +211,6 @@ token.
 
 - Swap static tokens for OAuth 2.1 via Passport and `Mcp::oauthRoutes()`, which is
   what most remote MCP clients prefer.
-- Add a settings page for minting and revoking MCP tokens (today it is an artisan
-  command, which is the right shape for a dev-ops action but not for an end user).
 - Queue the progress report once a workspace is large enough for it to be slow.
 
 ## License

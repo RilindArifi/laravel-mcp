@@ -11,6 +11,15 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,14 +46,6 @@ const props = defineProps<{
 const status = ref(props.project.status as string);
 
 const destroy = () => {
-    if (
-        !window.confirm(
-            'Delete this project? Its tasks will be deleted as well.',
-        )
-    ) {
-        return;
-    }
-
     router.delete(projectRoutes.destroy(props.project.id).url);
 };
 </script>
@@ -144,9 +145,31 @@ const destroy = () => {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <Button variant="destructive" @click="destroy">
-                    Delete project
-                </Button>
+                <Dialog>
+                    <DialogTrigger as-child>
+                        <Button variant="destructive">Delete project</Button>
+                    </DialogTrigger>
+                    <DialogContent class="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>
+                                Delete {{ project.name }}?
+                            </DialogTitle>
+                            <DialogDescription>
+                                Every task in this project is deleted with it.
+                                This cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                @click="destroy"
+                            >
+                                Delete project
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </CardContent>
         </Card>
     </div>
