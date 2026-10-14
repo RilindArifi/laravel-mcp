@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "taskflow": {
+            "command": "php",
+            "args": [
+                "/absolute/path/to/laravel-mcp/artisan",
+                "mcp:serve",
+                "--user=demo@taskflow.test"
+            ]
+        }
+    }
+}
