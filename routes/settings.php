@@ -6,7 +6,9 @@ use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
-    Route::redirect('settings', '/settings/profile');
+    // A plain GET redirect: Route::redirect() registers every verb, including
+    // Laravel 13's new `query` verb, which Wayfinder cannot type for Inertia.
+    Route::get('settings', fn () => to_route('profile.edit'))->name('settings');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
