@@ -1,6 +1,7 @@
 {
     "mcpServers": {
         "taskflow": {
+            "type": "stdio",
             "command": "php",
             "args": [
                 "/absolute/path/to/laravel-mcp/artisan",

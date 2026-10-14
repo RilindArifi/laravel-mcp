@@ -126,17 +126,35 @@ php artisan mcp:token demo@taskflow.test --name="Claude Code"
 php artisan mcp:token demo@taskflow.test --name="Reader" --abilities=mcp:read
 ```
 
+```bash
+claude mcp add --transport http taskflow https://laravel-mcp.test/mcp/taskflow \
+  --header "Authorization: Bearer <token>"
+```
+
+Or as a file, keeping the secret in the environment rather than in the repo:
+
 ```json
 {
     "mcpServers": {
         "taskflow-http": {
             "type": "http",
             "url": "https://laravel-mcp.test/mcp/taskflow",
-            "headers": { "Authorization": "Bearer <token>" }
+            "headers": { "Authorization": "Bearer ${TASKFLOW_MCP_TOKEN}" }
         }
     }
 }
 ```
+
+> **Local TLS gotcha.** Herd's certificate is trusted by macOS (so `curl` works)
+> but not by Node's bundled CA list, so a client may fail with
+> `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. Either point Node at Herd's CA:
+>
+> ```bash
+> export NODE_EXTRA_CA_CERTS="$HOME/Library/Application Support/Herd/config/valet/CA/LaravelValetCASelfSigned.pem"
+> ```
+>
+> or skip TLS entirely with `php artisan serve` and use
+> `http://127.0.0.1:8000/mcp/taskflow`. The token is enforced either way.
 
 ### Inspect it
 
