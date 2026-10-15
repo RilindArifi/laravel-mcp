@@ -14,6 +14,9 @@ kit — and the same domain is exposed to AI agents over the
   policies, form requests, an Inertia + Vue 3 UI and 95 tests.
 - **The same domain, two front doors.** Everything the browser can do, an agent
   can do: 10 tools, 3 resources (including a URI template) and 2 prompts.
+- **Real OAuth 2.1.** Remote clients register themselves, the user approves a
+  consent screen, and the token is never copied by hand — Passport fronts the
+  HTTP endpoint, with personal access tokens for scripts.
 - **Authorization written once.** Relationship-scoped queries plus the same
   policies guard both doors, so an agent is simply another authenticated client.
 
@@ -28,6 +31,8 @@ kit — and the same domain is exposed to AI agents over the
 | ![Projects](docs/screenshots/projects.png) | ![Tasks](docs/screenshots/tasks.png) |
 
 ![MCP tokens](docs/screenshots/mcp-tokens.png)
+
+![OAuth consent](docs/screenshots/oauth-consent.png)
 
 ## The MCP server
 
@@ -71,10 +76,13 @@ Mcp::web('/mcp/taskflow', TaskFlowServer::class)
 ## Run it locally
 
 ```bash
-composer setup
-php artisan migrate:fresh --seed
+composer setup   # installs, generates the app and Passport keys, migrates, seeds, builds
 npm run dev
 ```
+
+`composer setup` creates `storage/oauth-*.key` for Passport (gitignored, as they
+should be) and the seeder creates the personal access client that the tokens
+page issues from.
 
 Sign in with **demo@taskflow.test** / **password**. The seeder also creates a
 second user (`ada@taskflow.test`) whose work must never be visible to the demo
@@ -82,63 +90,32 @@ user — that is what the scoping tests assert.
 
 ## Connect an MCP client
 
-### Over stdio (Claude Code, Cursor, …)
+### Over OAuth 2.1 — nothing to copy (recommended)
 
-`mcp:serve` picks the user the server acts as, then starts the stdio transport:
+Point the client at the server and let it do the rest: it reads
+`/.well-known/oauth-protected-resource`, registers itself through dynamic client
+registration, sends you to a consent screen, and exchanges the code with PKCE.
 
 ```bash
-cp .mcp.json.example .mcp.json
-php artisan mcp:serve --user=demo@taskflow.test
+claude mcp add --transport http taskflow https://laravel-mcp.test/mcp/taskflow
 ```
+
+Approve the screen in the browser and the client is connected. The grant is
+listed on the **MCP tokens** page and can be revoked there.
+
+### Over a personal access token — for scripts and CI
+
+```bash
+php artisan mcp:token demo@taskflow.test --name="CI" --scopes=mcp:read
+```
+
+Or issue one from the **MCP tokens** page, which also fills in three copy-ready
+snippets with it. Send it as a bearer token:
 
 ```json
 {
     "mcpServers": {
         "taskflow": {
-            "command": "php",
-            "args": [
-                "/absolute/path/to/laravel-mcp/artisan",
-                "mcp:serve",
-                "--user=demo@taskflow.test"
-            ]
-        }
-    }
-}
-```
-
-Or with the Claude Code CLI:
-
-```bash
-claude mcp add taskflow -- php /absolute/path/to/laravel-mcp/artisan mcp:serve --user=demo@taskflow.test
-```
-
-### Over HTTP with a Sanctum token
-
-Issue, inspect and revoke tokens from the **MCP tokens** page in the app. It
-shows the plain text token exactly once and fills in three copy-ready snippets
-with it — the `claude mcp add` one-liner, the `claude_desktop_config.json`
-block, and a stdio block with this machine's absolute PHP path — so connecting
-a client is a copy and a paste.
-
-The same thing from the command line:
-
-```bash
-php artisan mcp:token demo@taskflow.test --name="Claude Code"
-# read-only clients:
-php artisan mcp:token demo@taskflow.test --name="Reader" --abilities=mcp:read
-```
-
-```bash
-claude mcp add --transport http taskflow https://laravel-mcp.test/mcp/taskflow \
-  --header "Authorization: Bearer <token>"
-```
-
-Or as a file, keeping the secret in the environment rather than in the repo:
-
-```json
-{
-    "mcpServers": {
-        "taskflow-http": {
             "type": "http",
             "url": "https://laravel-mcp.test/mcp/taskflow",
             "headers": { "Authorization": "Bearer ${TASKFLOW_MCP_TOKEN}" }
@@ -156,7 +133,18 @@ Or as a file, keeping the secret in the environment rather than in the repo:
 > ```
 >
 > or skip TLS entirely with `php artisan serve` and use
-> `http://127.0.0.1:8000/mcp/taskflow`. The token is enforced either way.
+> `http://127.0.0.1:8000/mcp/taskflow`.
+
+### Over stdio (Claude Code, Cursor, …)
+
+On the machine that runs the app, skip URLs, tokens and certificates entirely:
+
+```bash
+claude mcp add taskflow -- php /absolute/path/to/laravel-mcp/artisan mcp:serve --user=demo@taskflow.test
+```
+
+`mcp:serve` picks the user the server acts as, then starts the stdio transport.
+`cp .mcp.json.example .mcp.json` has the same thing in file form.
 
 ### Inspect it
 
@@ -179,8 +167,10 @@ Three layers, in this order:
 3. **The same policies as the web UI.** Every mutating tool runs
    `Gate::forUser($user)->authorize(...)` against `ProjectPolicy` / `TaskPolicy`.
 
-On the HTTP transport, Sanctum token abilities decide whether an agent may write
-at all (`mcp:read` vs `mcp:write`), and `throttle:mcp` rate-limits per user.
+On the HTTP transport, Passport decides who the caller is and what it may do.
+The OAuth flow grants the `mcp:use` scope, which is full access; a personal
+access token can be narrowed to `mcp:read`, and every write tool refuses it with
+_"This MCP token is read-only."_ `throttle:mcp` rate-limits per user.
 
 The stdio transport is honest about what it is: `mcp:serve --user=` is an
 identity selector for local development, not a security boundary — anyone who can
@@ -203,6 +193,7 @@ app/Support/
 
 app/Http/Controllers/Mcp/TokenController.php  # the MCP tokens module (issue, list, revoke)
 resources/js/pages/mcp-tokens/Index.vue
+routes/ai.php                        # Mcp::oauthRoutes() + the two transports
 ```
 
 Deliberate omissions, with reasons:
@@ -229,8 +220,6 @@ token.
 
 ## What I would do next
 
-- Swap static tokens for OAuth 2.1 via Passport and `Mcp::oauthRoutes()`, which is
-  what most remote MCP clients prefer.
 - Queue the progress report once a workspace is large enough for it to be slow.
 
 ## License

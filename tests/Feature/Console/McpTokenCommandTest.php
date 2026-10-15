@@ -10,18 +10,25 @@ class McpTokenCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_issues_a_token_with_the_requested_abilities(): void
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->createPersonalAccessClient();
+    }
+
+    public function test_it_issues_a_token_with_the_requested_scopes(): void
     {
         $user = User::factory()->create(['email' => 'demo@taskflow.test']);
 
         $this->artisan('mcp:token', [
             'email' => 'demo@taskflow.test',
-            '--abilities' => 'mcp:read',
+            '--scopes' => 'mcp:read',
         ])->assertSuccessful();
 
         $token = $user->tokens()->firstOrFail();
 
-        $this->assertSame(['mcp:read'], $token->abilities);
+        $this->assertSame(['mcp:read'], $token->scopes);
     }
 
     public function test_it_fails_for_an_unknown_user(): void

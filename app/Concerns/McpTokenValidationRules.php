@@ -16,18 +16,18 @@ trait McpTokenValidationRules
     {
         return [
             'name' => ['required', 'string', 'max:60'],
-            'abilities' => ['required', 'array', 'min:1'],
-            'abilities.*' => [Rule::in($this->mcpAbilities())],
+            'scopes' => ['required', 'array', 'min:1'],
+            'scopes.*' => [Rule::in($this->mcpScopes())],
             'expires_in_days' => ['nullable', 'integer', Rule::in([7, 30, 90, 365])],
         ];
     }
 
     /**
-     * Get the abilities a token may be granted.
+     * Get the scopes a personal access token may be granted.
      *
      * @return array<int, string>
      */
-    protected function mcpAbilities(): array
+    protected function mcpScopes(): array
     {
         return ['mcp:read', 'mcp:write'];
     }

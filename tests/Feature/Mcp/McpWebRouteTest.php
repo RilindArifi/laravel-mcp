@@ -20,19 +20,21 @@ class McpWebRouteTest extends TestCase
         ])->assertUnauthorized();
     }
 
-    public function test_the_http_server_is_guarded_by_sanctum_and_throttled(): void
+    public function test_the_http_server_is_guarded_by_passport_and_throttled(): void
     {
         $route = Route::getRoutes()->getByName('mcp.taskflow');
 
         $this->assertNotNull($route);
-        $this->assertContains('auth:sanctum', $route->gatherMiddleware());
+        $this->assertContains('auth:api', $route->gatherMiddleware());
         $this->assertContains('throttle:mcp', $route->gatherMiddleware());
     }
 
     public function test_a_valid_token_reaches_the_server(): void
     {
+        $this->createPersonalAccessClient();
+
         $user = User::factory()->create();
-        $token = $user->createToken('Test client', ['mcp:read', 'mcp:write'])->plainTextToken;
+        $token = $user->createToken('Test client', ['mcp:read', 'mcp:write'])->accessToken;
 
         $meta = [
             'io.modelcontextprotocol/protocolVersion' => '2026-07-28',

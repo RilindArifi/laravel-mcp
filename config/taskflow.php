@@ -14,7 +14,7 @@ return [
     |
     | This is an identity selector for local development, not a security
     | boundary: anyone who can run artisan already has database access. The
-    | security boundary is the HTTP transport, which uses Sanctum tokens.
+    | security boundary is the HTTP transport, which uses Passport.
     |
     */
 

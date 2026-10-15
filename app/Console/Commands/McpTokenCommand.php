@@ -15,14 +15,14 @@ class McpTokenCommand extends Command
     protected $signature = 'mcp:token
         {email : The email of the user the token belongs to}
         {--name=MCP Client : A label for the token}
-        {--abilities=mcp:read,mcp:write : Comma separated abilities}';
+        {--scopes=mcp:read,mcp:write : Comma separated scopes}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Issue a Sanctum token for the HTTP MCP server';
+    protected $description = 'Issue a personal access token for the HTTP MCP server';
 
     /**
      * Execute the console command.
@@ -40,18 +40,18 @@ class McpTokenCommand extends Command
             return self::FAILURE;
         }
 
-        $abilitiesOption = $this->option('abilities');
+        $scopesOption = $this->option('scopes');
         $nameOption = $this->option('name');
 
-        $abilities = array_values(array_filter(array_map(
+        $scopes = array_values(array_filter(array_map(
             trim(...),
-            explode(',', is_string($abilitiesOption) ? $abilitiesOption : 'mcp:read'),
+            explode(',', is_string($scopesOption) ? $scopesOption : 'mcp:read'),
         )));
 
-        $token = $user->createToken(is_string($nameOption) ? $nameOption : 'MCP Client', $abilities);
+        $token = $user->createToken(is_string($nameOption) ? $nameOption : 'MCP Client', $scopes);
 
-        $this->components->info("Token issued for {$user->email} with abilities: ".implode(', ', $abilities));
-        $this->line($token->plainTextToken);
+        $this->components->info("Token issued for {$user->email} with scopes: ".implode(', ', $scopes));
+        $this->line($token->accessToken);
         $this->newLine();
         $this->components->warn('Copy it now — it cannot be shown again.');
 

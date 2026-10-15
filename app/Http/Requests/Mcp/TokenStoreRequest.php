@@ -28,7 +28,7 @@ class TokenStoreRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'abilities.required' => 'Pick at least one ability for the token.',
+            'scopes.required' => 'Pick at least one scope for the token.',
         ];
     }
 }

@@ -10,6 +10,8 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Laravel\Passport\ClientRepository;
+use RuntimeException;
 
 class TaskFlowDemoSeeder extends Seeder
 {
@@ -18,6 +20,8 @@ class TaskFlowDemoSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->ensurePersonalAccessClient();
+
         $demo = $this->user('Demo User', 'demo@taskflow.test');
 
         $labels = $this->labels($demo, ['backend', 'frontend', 'design', 'research', 'external']);
@@ -53,7 +57,23 @@ class TaskFlowDemoSeeder extends Seeder
     }
 
     /**
-     * Create or update a verified demo user with a known password.
+     * Make sure Passport can issue the personal access tokens the MCP tokens
+     * page hands out. A fresh migration drops the OAuth clients with everything
+     * else, so the seeder recreates it.
+     */
+    protected function ensurePersonalAccessClient(): void
+    {
+        $clients = app(ClientRepository::class);
+
+        try {
+            $clients->personalAccessClient('users');
+        } catch (RuntimeException) {
+            $clients->createPersonalAccessGrantClient('TaskFlow Personal Access Client', 'users');
+        }
+    }
+
+    /**
+     * Create or update a demo user with a known password.
      */
     protected function user(string $name, string $email): User
     {

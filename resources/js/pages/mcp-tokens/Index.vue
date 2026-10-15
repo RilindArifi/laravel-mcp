@@ -36,10 +36,10 @@ import {
 import mcpTokens from '@/routes/mcp-tokens';
 
 type McpToken = {
-    id: number;
+    id: string;
     name: string;
-    abilities: string[];
-    last_used_at: string | null;
+    kind: 'personal' | 'oauth';
+    scopes: string[];
     expires_at: string | null;
     created_at: string | null;
 };
@@ -52,7 +52,7 @@ defineOptions({
 
 const props = defineProps<{
     tokens: McpToken[];
-    abilityOptions: string[];
+    scopeOptions: string[];
     endpoint: string;
     newToken: string | null;
     phpBinary: string;
@@ -217,24 +217,24 @@ const confirmRevoke = () => {
                         </div>
 
                         <div class="grid gap-2">
-                            <Label>Abilities</Label>
+                            <Label>Scopes</Label>
                             <div class="flex flex-wrap gap-4">
                                 <label
-                                    v-for="ability in abilityOptions"
-                                    :key="ability"
+                                    v-for="scope in scopeOptions"
+                                    :key="scope"
                                     class="flex items-center gap-2 text-sm"
                                 >
                                     <input
                                         type="checkbox"
-                                        name="abilities[]"
+                                        name="scopes[]"
                                         class="size-4 rounded border-input accent-primary"
-                                        :value="ability"
-                                        :checked="ability === 'mcp:read'"
+                                        :value="scope"
+                                        :checked="scope === 'mcp:read'"
                                     />
-                                    <code class="text-xs">{{ ability }}</code>
+                                    <code class="text-xs">{{ scope }}</code>
                                 </label>
                             </div>
-                            <InputError :message="errors.abilities" />
+                            <InputError :message="errors.scopes" />
                         </div>
 
                         <div class="grid gap-2">
@@ -244,7 +244,9 @@ const confirmRevoke = () => {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="never">Never</SelectItem>
+                                    <SelectItem value="never">
+                                        Default (1 year)
+                                    </SelectItem>
                                     <SelectItem value="7">In 7 days</SelectItem>
                                     <SelectItem value="30">
                                         In 30 days
@@ -269,16 +271,18 @@ const confirmRevoke = () => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Active tokens</CardTitle>
+                    <CardTitle>Active access</CardTitle>
                     <CardDescription>
-                        Revoking a token takes effect on the next request.
+                        Personal tokens you issued, and clients you approved
+                        through OAuth. Revoking takes effect on the next
+                        request.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <EmptyState
                         v-if="tokens.length === 0"
-                        title="No tokens yet"
-                        description="Issue one to connect Claude Code, Cursor or the MCP Inspector over HTTP."
+                        title="Nothing connected yet"
+                        description="Issue a token below, or approve a client through the OAuth flow."
                         :icon="KeyRound"
                     />
 
@@ -296,21 +300,30 @@ const confirmRevoke = () => {
                                     class="flex flex-wrap items-center gap-1.5"
                                 >
                                     <Badge
-                                        v-for="ability in token.abilities"
-                                        :key="ability"
+                                        :variant="
+                                            token.kind === 'oauth'
+                                                ? 'default'
+                                                : 'outline'
+                                        "
+                                        class="text-[11px]"
+                                    >
+                                        {{
+                                            token.kind === 'oauth'
+                                                ? 'OAuth client'
+                                                : 'Personal token'
+                                        }}
+                                    </Badge>
+                                    <Badge
+                                        v-for="scope in token.scopes"
+                                        :key="scope"
                                         variant="secondary"
                                         class="font-mono text-[11px]"
                                     >
-                                        {{ ability }}
+                                        {{ scope }}
                                     </Badge>
                                 </div>
                                 <p class="text-xs text-muted-foreground">
-                                    Created {{ token.created_at }} ·
-                                    {{
-                                        token.last_used_at
-                                            ? `last used ${token.last_used_at}`
-                                            : 'never used'
-                                    }}
+                                    Created {{ token.created_at }}
                                     <template v-if="token.expires_at">
                                         · expires {{ token.expires_at }}
                                     </template>
@@ -337,7 +350,7 @@ const confirmRevoke = () => {
         >
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Revoke this token?</DialogTitle>
+                    <DialogTitle>Revoke this access?</DialogTitle>
                     <DialogDescription>
                         Any client using
                         <span class="font-medium">{{ revoking?.name }}</span>

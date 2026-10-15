@@ -10,7 +10,8 @@ use InvalidArgumentException;
  *
  * This is an identity selector for local development, not a security boundary:
  * anyone able to run `artisan` already has database access. The boundary that
- * matters is the HTTP transport, which authenticates with Sanctum tokens.
+ * matters is the HTTP transport, which authenticates with Passport (OAuth or
+ * a personal access token).
  */
 class LocalUserResolver
 {
@@ -21,7 +22,7 @@ class LocalUserResolver
     {
         if (app()->isProduction()) {
             throw new InvalidArgumentException(
-                'The stdio MCP server is disabled in production. Use the HTTP server at /mcp/taskflow with a Sanctum token instead.',
+                'The stdio MCP server is disabled in production. Use the OAuth-protected HTTP server at /mcp/taskflow instead.',
             );
         }
 

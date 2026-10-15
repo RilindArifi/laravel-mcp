@@ -9,7 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Passport\Token;
 use Symfony\Component\Process\PhpExecutableFinder;
 
 class TokenController extends Controller
@@ -17,30 +17,36 @@ class TokenController extends Controller
     use McpTokenValidationRules;
 
     /**
-     * Show the tokens that can reach the HTTP MCP server.
+     * Show everything that can reach the HTTP MCP server as this user.
      */
     public function index(Request $request): Response
     {
+        $user = $request->user();
+
         return Inertia::render('mcp-tokens/Index', [
-            'tokens' => $request->user()->tokens()
+            'tokens' => $user->tokens()
+                ->where('revoked', false)
+                ->with('client')
                 ->latest()
                 ->get()
-                ->map(fn (PersonalAccessToken $token): array => [
+                ->map(fn (Token $token): array => [
                     'id' => $token->id,
-                    'name' => $token->name,
-                    'abilities' => $token->abilities ?? [],
-                    'last_used_at' => $token->last_used_at?->diffForHumans(),
+                    'name' => $token->name ?: $token->client->name,
+                    // An OAuth client was authorized in the browser; a personal
+                    // token was issued from this page or from the console.
+                    'kind' => $token->client->hasGrantType('personal_access') ? 'personal' : 'oauth',
+                    'scopes' => $token->scopes,
                     'expires_at' => $token->expires_at?->toDateString(),
                     'created_at' => $token->created_at?->toDateString(),
                 ])
                 ->all(),
-            'abilityOptions' => $this->mcpAbilities(),
+            'scopeOptions' => $this->mcpScopes(),
             'endpoint' => route('mcp.taskflow'),
             // Everything the connection snippets need, resolved server side so
             // the user can paste them without editing paths by hand.
             'phpBinary' => $this->phpBinary(),
             'artisanPath' => base_path('artisan'),
-            'userEmail' => $request->user()->email,
+            'userEmail' => $user->email,
             // Shown once, immediately after the token is issued.
             'newToken' => $request->session()->get('mcpToken'),
         ]);
@@ -60,38 +66,37 @@ class TokenController extends Controller
     }
 
     /**
-     * Issue a new token for the MCP server.
+     * Issue a new personal access token for the MCP server.
      */
     public function store(TokenStoreRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
-        $expiresInDays = $validated['expires_in_days'] ?? null;
+        $result = $request->user()->createToken($validated['name'], $validated['scopes']);
 
-        $token = $request->user()->createToken(
-            $validated['name'],
-            $validated['abilities'],
-            $expiresInDays === null ? null : now()->addDays((int) $expiresInDays),
-        );
+        $token = $result->getToken();
+
+        if (($validated['expires_in_days'] ?? null) !== null && $token !== null) {
+            $token->forceFill([
+                'expires_at' => now()->addDays((int) $validated['expires_in_days']),
+            ])->save();
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Token issued.')]);
 
-        return to_route('mcp-tokens.index')->with('mcpToken', $token->plainTextToken);
+        return to_route('mcp-tokens.index')->with('mcpToken', $result->accessToken);
     }
 
     /**
-     * Revoke one of the user's tokens.
+     * Revoke a token, whether it was issued here or granted through OAuth.
      */
-    public function destroy(Request $request, PersonalAccessToken $token): RedirectResponse
+    public function destroy(Request $request, Token $token): RedirectResponse
     {
-        abort_unless(
-            $token->tokenable_id === $request->user()->id && $token->tokenable_type === $request->user()->getMorphClass(),
-            403,
-        );
+        abort_unless($token->user_id === $request->user()->getAuthIdentifier(), 403);
 
-        $token->delete();
+        $token->revoke();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Token revoked.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Access revoked.')]);
 
         return to_route('mcp-tokens.index');
     }
