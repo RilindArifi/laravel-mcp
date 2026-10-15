@@ -114,9 +114,11 @@ claude mcp add taskflow -- php /absolute/path/to/laravel-mcp/artisan mcp:serve -
 
 ### Over HTTP with a Sanctum token
 
-Issue, inspect and revoke tokens from the **MCP tokens** page in the app: it
-shows the plain text token exactly once, together with a ready-to-paste client
-configuration, and lists each token's abilities and last use.
+Issue, inspect and revoke tokens from the **MCP tokens** page in the app. It
+shows the plain text token exactly once and fills in three copy-ready snippets
+with it — the `claude mcp add` one-liner, the `claude_desktop_config.json`
+block, and a stdio block with this machine's absolute PHP path — so connecting
+a client is a copy and a paste.
 
 The same thing from the command line:
 

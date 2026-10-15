@@ -3,6 +3,7 @@ import { Form, Head, router } from '@inertiajs/vue3';
 import { Check, Copy, KeyRound, ShieldCheck } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import TokenController from '@/actions/App/Http/Controllers/Mcp/TokenController';
+import CopyBlock from '@/components/CopyBlock.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -54,10 +55,20 @@ const props = defineProps<{
     abilityOptions: string[];
     endpoint: string;
     newToken: string | null;
+    phpBinary: string;
+    artisanPath: string;
+    userEmail: string;
 }>();
 
 const expiry = ref('never');
 const copied = ref<'token' | 'config' | null>(null);
+
+const token = computed(() => props.newToken ?? '<your-token>');
+
+const cliCommand = computed(
+    () =>
+        `claude mcp add --transport http taskflow ${props.endpoint} --header "Authorization: Bearer ${token.value}"`,
+);
 
 const clientConfig = computed(() =>
     JSON.stringify(
@@ -66,9 +77,26 @@ const clientConfig = computed(() =>
                 taskflow: {
                     type: 'http',
                     url: props.endpoint,
-                    headers: {
-                        Authorization: `Bearer ${props.newToken ?? '<token>'}`,
-                    },
+                    headers: { Authorization: `Bearer ${token.value}` },
+                },
+            },
+        },
+        null,
+        2,
+    ),
+);
+
+const stdioConfig = computed(() =>
+    JSON.stringify(
+        {
+            mcpServers: {
+                taskflow: {
+                    command: props.phpBinary,
+                    args: [
+                        props.artisanPath,
+                        'mcp:serve',
+                        `--user=${props.userEmail}`,
+                    ],
                 },
             },
         },
@@ -147,27 +175,10 @@ const confirmRevoke = () => {
                     </Button>
                 </div>
 
-                <details class="rounded-md border p-3">
-                    <summary class="cursor-pointer text-sm font-medium">
-                        Client configuration
-                    </summary>
-                    <pre
-                        class="mt-3 overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs"
-                        >{{ clientConfig }}</pre>
-                    <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        class="mt-3"
-                        @click="copy('config', clientConfig)"
-                    >
-                        <component
-                            :is="copied === 'config' ? Check : Copy"
-                            class="size-4"
-                        />
-                        {{ copied === 'config' ? 'Copied' : 'Copy config' }}
-                    </Button>
-                </details>
+                <CopyBlock
+                    label="Claude Code — one command"
+                    :code="cliCommand"
+                />
             </AlertDescription>
         </Alert>
 
@@ -354,17 +365,30 @@ const confirmRevoke = () => {
 
         <Card>
             <CardHeader>
-                <CardTitle>Connecting without a token</CardTitle>
+                <CardTitle>Connect a client</CardTitle>
                 <CardDescription>
-                    Editor agents on this machine can skip tokens entirely and
-                    talk to the same server over stdio.
+                    Issue a token above and these fill themselves in.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <pre
-                    class="overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs"
-                >
-php artisan mcp:serve --user=your@email.test</pre>
+            <CardContent class="space-y-6">
+                <CopyBlock label="Claude Code (CLI)" :code="cliCommand" />
+
+                <CopyBlock
+                    label="Claude Desktop — claude_desktop_config.json"
+                    :code="clientConfig"
+                />
+
+                <div class="space-y-2">
+                    <p class="text-sm text-muted-foreground">
+                        On this machine you can skip tokens entirely: the stdio
+                        transport runs the server as a local process, so there
+                        is no URL, no token and no certificate to trust.
+                    </p>
+                    <CopyBlock
+                        label="Any MCP client — stdio, no token"
+                        :code="stdioConfig"
+                    />
+                </div>
             </CardContent>
         </Card>
     </div>

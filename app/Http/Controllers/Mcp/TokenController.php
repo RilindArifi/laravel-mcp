@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Sanctum\PersonalAccessToken;
+use Symfony\Component\Process\PhpExecutableFinder;
 
 class TokenController extends Controller
 {
@@ -35,9 +36,27 @@ class TokenController extends Controller
                 ->all(),
             'abilityOptions' => $this->mcpAbilities(),
             'endpoint' => route('mcp.taskflow'),
+            // Everything the connection snippets need, resolved server side so
+            // the user can paste them without editing paths by hand.
+            'phpBinary' => $this->phpBinary(),
+            'artisanPath' => base_path('artisan'),
+            'userEmail' => $request->user()->email,
             // Shown once, immediately after the token is issued.
             'newToken' => $request->session()->get('mcpToken'),
         ]);
+    }
+
+    /**
+     * Get the absolute path of the PHP CLI binary, for the stdio snippet.
+     *
+     * GUI clients do not inherit the shell PATH, so a bare "php" would not
+     * resolve for them.
+     */
+    protected function phpBinary(): string
+    {
+        $finder = (new PhpExecutableFinder)->find();
+
+        return is_string($finder) && ! str_contains($finder, 'fpm') ? $finder : 'php';
     }
 
     /**
